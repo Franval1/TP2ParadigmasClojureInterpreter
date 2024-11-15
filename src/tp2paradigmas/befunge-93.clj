@@ -21,8 +21,9 @@
 
 ;;devuelve la nueva lista sin el ultimo dato agregado (LIFO)
 ;;si la lista esta vacia devuelve 0
-(defn desapilar [pila]
-  (if (nil? (peek pila)) 0 (pop pila)))
+(defn desapilar [estado]
+  (let [pila (:pila estado)] (if (nil? (peek pila)) 0 (pop pila)))
+  )
 
 ;apila los comandos del 0 al 9
 (defn comandos-0-9 [comando pila]
@@ -38,26 +39,48 @@
          ) ) )
 
 ;;funciones de calculo basicas
-(defn sumar [pila] (let [valor1 (peek pila) valor2 (peek pila)] (+ valor1 valor2)))
-(defn restar [pila] (let [valor1 (peek pila )  valor2 (peek  (desapilar pila)) ]
-                      (conj (desapilar (desapilar pila)) (- valor1 valor2))))
+(defn sumar [estado]
+  (let [pila (:pila estado)
+        valor1 (peek pila)
+        valor2 (peek (pop pila))
+        nueva-pila (conj (pop (pop pila)) (+ valor1 valor2))]
+    (assoc estado :pila nueva-pila)))
 
-(defn multiplicar [pila] (let [valor1 (peek pila) valor2 (peek (desapilar pila) )]
-                           (conj (desapilar (desapilar pila)) (* valor1 valor2)) ))
 
-(defn dividir [pila] (let [valor1 (peek pila) valor2 (peek pila)]
-                       (conj (desapilar (desapilar pila)) (/ valor1 valor2))))
+(defn restar [estado]   (let [pila (:pila estado)
+                              valor1 (peek pila)
+                              valor2 (peek (pop pila))
+                              nueva-pila (conj (pop (pop pila)) (- valor1 valor2))]
+                          (assoc estado :pila nueva-pila)))
 
-(defn modulo [pila] (let [valor1 (peek pila) valor2 (peek (desapilar pila))]
-                    (conj (desapilar (desapilar pila)) (mod valor1 valor2))))
+(defn multiplicar [estado] (let [pila (:pila estado)
+                               valor1 (peek pila)
+                               valor2 (peek (pop pila))
+                               nueva-pila (conj (pop (pop pila)) (* valor1 valor2))]
+                           (assoc estado :pila nueva-pila)))
+
+(defn dividir [estado] (let [pila (:pila estado)
+                           valor1 (peek pila)
+                           valor2 (peek (pop pila))
+                           nueva-pila (conj (pop (pop pila)) (/ valor1 valor2))]
+                       (assoc estado :pila nueva-pila)))
+
+(defn modulo [estado] (let [pila (:pila estado)
+                          valor1 (peek pila)
+                          valor2 (peek (pop pila))
+                          nueva-pila (conj (pop (pop pila)) (- valor1 valor2))]
+                      (assoc estado :pila nueva-pila)))
+
 (defn negado [valor] (if (zero? valor) 1 0))
 
-(defn mayor [pila] (let [valor1 (peek pila) valor2 (peek (desapilar pila))]
+(defn mayor [estado] (let [pila (:pila estado)
+                           valor1 (peek pila)
+                           valor2 (peek (pop pila))]
                      (if (> valor1 valor2)
-                       (conj (desapilar (desapilar pila)) 1)
-                       (conj (desapilar (desapilar pila)) 0))) )
+                       (assoc estado :pila (conj (pop (pop pila)) 1))
+                       (assoc estado :pila (conj (pop (pop pila)) 0)))) )
 
-;;funciones de movimiento
+;;funciones de movimiento ;;modificar para que reciba y devuelve el estado nuevo
 (defn derecha [contador-programa] [(+ (first contador-programa) 1) (second contador-programa)])
 (defn izquierda [contador-programa] [(- (first contador-programa) 1) (second contador-programa)])
 (defn abajo [contador-programa] [(first contador-programa) (+ (second contador-programa) 1)])
@@ -70,17 +93,18 @@
                      3 (abajo contador-programa) )))
 
 ;;funciones condicionales
-(defn if-horizontal [booleano contador-programa] (if (true? booleano) (izquierda contador-programa) (derecha contador-programa)))
-(defn if-vertical [booleano contador-programa] (if (true? booleano) (arriba contador-programa) (abajo contador-programa)))
-(defn dup [valor] [valor valor])
-(defn intercambiar [valor1 valor2] [valor2 valor1])
+(defn if-horizontal [pila contador-programa]  (if (= (peek pila) 0) (derecha contador-programa) (izquierda contador-programa))) ;;manejar desapilado del dato
+(defn if-vertical [pila contador-programa] (if (= (peek pila) 0) (abajo contador-programa) (arriba contador-programa))) ;;manejar desapilado del dato
+(defn dup [pila] (conj pila (peek pila)))
+(defn intercambiar [pila] (let [valor1 (peek pila) valor2 (peek (desapilar pila))]
+                                    (conj (conj (desapilar (desapilar pila)) valor1) valor2)  ))
 (defn print-int [pila] (let [valor (peek pila)] (println (str valor " ")) (pop pila)))
 (defn print-ascii [pila] (let [valor (peek pila)] (if (nil? valor)
                                                     nil
                                                   ((if (char? valor) (println (int valor)) (println (int(first(str valor)))))(desapilar pila)) )))
 
-
-(defn interpretar-dato [toroide contador-programa]
+(defn descartar-valor [estado] (let [pila (:pila estado)] (assoc estado :pila (pop pila))))
+(defn interpretar-dato [pila contador-programa]
   {:+ (sumar pila)
    :- (restar pila)
    :* (multiplicar pila)
@@ -89,15 +113,15 @@
    :! (negado pila)
    :' (mayor pila)
    :? (random contador-programa)
-   :_ (if-horizontal)
-   :| (if-vertical)
-   :$ ()
-   :. ()
+   :_ (if-horizontal pila contador-programa)
+   :| (if-vertical pila contador-programa)
+   :$ (desapilar pila)
+   :. (print-int pila)
    :# ()
    :g ()
    :p ()
    :& ()
-   }
+   })
 
   (defn interpretar-mov [direccion contador-programa]
   (case direccion
@@ -107,10 +131,10 @@
     case "arriba" (arriba contador-programa)))
 
 
-(defn recorrer-toroide [toroide direccion contador-programa]
+(defn recorrer-toroide [toroide pila direccion contador-programa]
   (let [dato (get toroide contador-programa)]
     (if (= (dato) \space)
-      (recorrer-toroide toroide direccion (interpretar-mov direccion contador-programa))
-      ((if (=(dato) \@) nil (interpretar-dato toroide contador-programa)) ) )
+      (recorrer-toroide toroide pila direccion (interpretar-mov direccion contador-programa))
+      ((if (=(dato) \@) nil (interpretar-dato pila contador-programa)) ) )
     )
   )
