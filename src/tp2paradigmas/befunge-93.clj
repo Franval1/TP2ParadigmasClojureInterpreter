@@ -21,12 +21,6 @@
   (let [[x-wrap y-wrap] (envolver-coords x y)]
     (assoc-in toroide [y-wrap x-wrap] valor)))
 
-(defn cambiar-direccion [valor]
-  (case valor
-    case \< ("izquierda")
-    case \> ("derecha")
-    case \v ("abajo")
-    case \^ ("arriba") ))
 
 
 ;;devuelve la nueva lista sin el ultimo dato agregado (LIFO)
@@ -34,10 +28,6 @@
 (defn desapilar [estado]
   (let [pila (:pila estado)] (if (nil? (peek pila)) 0 (pop pila)))
   )
-
-;apila los comandos del 0 al 9
-(defn comandos-0-9 [comando pila]
-  (if (>= comando 0) (if (<= comando 9) (conj comando pila))) )
 
 ;; devuelve una pila con los valores ascii de los elementos
 ;; apilados hasta la comilla final.
@@ -55,6 +45,22 @@
         valor2 (peek (pop pila))
         nueva-pila (conj (pop (pop pila)) (+ valor1 valor2))]
     (assoc estado :pila nueva-pila)))
+
+(defn modificar-toroide [estado]                            ;;corregir
+  (let [pila (:pila estado)
+        valor (peek pila)
+        pila (pop pila)
+        y (peek pila)
+        pila (pop pila)
+        x (peek pila)
+        pila (pop pila)
+        toroide (:toroide estado)
+        filas (count toroide)
+        columnas (count (first toroide))
+        x-envuelto (mod x columnas)
+        y-envuelto (mod y filas)
+        nuevo-toroide (assoc-in toroide [y-envuelto x-envuelto] (char valor))]
+    (assoc estado :pila pila :toroide nuevo-toroide)))
 
 
 (defn restar [estado]   (let [pila (:pila estado)
@@ -90,62 +96,124 @@
                        (assoc estado :pila (conj (pop (pop pila)) 1))
                        (assoc estado :pila (conj (pop (pop pila)) 0)))) )
 
-;;funciones de movimiento ;;modificar para que reciba y devuelve el estado nuevo
-(defn derecha [contador-programa] [(+ (first contador-programa) 1) (second contador-programa)])
-(defn izquierda [contador-programa] [(- (first contador-programa) 1) (second contador-programa)])
-(defn abajo [contador-programa] [(first contador-programa) (+ (second contador-programa) 1)])
-(defn arriba [contador-programa] [(first contador-programa) (- (second contador-programa) 1)])
-(defn random [contador-programa] (let [eleccion-random (rand 4)]
+;;funciones de movimiento
+(defn derecha [estado] (let [contador-programa (:PC estado)] (assoc estado :PC [(+ (first contador-programa) 1) (second contador-programa)])) )
+(defn izquierda [estado] (let [contador-programa (:PC estado)] (assoc estado :PC [(- (first contador-programa) 1) (second contador-programa)])) )
+(defn abajo [estado] (let [contador-programa (:PC estado)]  (assoc estado :PC [(first contador-programa) (+ (second contador-programa) 1)])) )
+(defn arriba [estado] (let [contador-programa (:PC estado)]  (assoc estado :PC [(first contador-programa) (- (second contador-programa) 1)])) )
+(defn random [estado] (let [eleccion-random (rand-int 4)]
                    (case eleccion-random
-                     0 (derecha contador-programa)
-                     1 (izquierda contador-programa)
-                     2 (arriba contador-programa)
-                     3 (abajo contador-programa) )))
+                     0 (derecha estado)
+                     1 (izquierda estado)
+                     2 (arriba estado)
+                     3 (abajo estado) )))
 
 ;;funciones condicionales
-(defn if-horizontal [pila contador-programa]  (if (= (peek pila) 0) (derecha contador-programa) (izquierda contador-programa))) ;;manejar desapilado del dato
-(defn if-vertical [pila contador-programa] (if (= (peek pila) 0) (abajo contador-programa) (arriba contador-programa))) ;;manejar desapilado del dato
-(defn dup [pila] (conj pila (peek pila)))
-(defn intercambiar [pila] (let [valor1 (peek pila) valor2 (peek (desapilar pila))]
-                                    (conj (conj (desapilar (desapilar pila)) valor1) valor2)  ))
-(defn print-int [pila] (let [valor (peek pila)] (println (str valor " ")) (pop pila)))
-(defn print-ascii [pila] (let [valor (peek pila)] (if (nil? valor)
-                                                    nil
-                                                  ((if (char? valor) (println (int valor)) (println (int(first(str valor)))))(desapilar pila)) )))
+(defn if-horizontal [estado]
+  (let [pila (:pila estado)
+        valor (peek pila)
+        nuevo-pila (pop pila)
+        nuevo-estado (if (= valor 0)
+                       (assoc estado :direccion "derecha")
+                       (assoc estado :direccion "izquierda"))]
+    (assoc nuevo-estado :pila nuevo-pila)))
+
+(defn if-vertical [estado]
+  (let [pila (:pila estado)
+        valor (peek pila)
+        nuevo-pila (pop pila)
+        nuevo-estado (if (= valor 0)
+                       (assoc estado :direcccion "arriba")
+                       (assoc estado :direccion "abajo"))]
+    (assoc nuevo-estado :pila nuevo-pila)))
+
+(defn dup [estado] (let [pila (:pila estado)] (assoc estado :pila (conj pila (peek pila)))) )
+
+(defn intercambiar [estado] (let [pila (:pila estado) valor1 (peek pila) valor2 (peek (desapilar pila))]
+                              (assoc estado :pila (conj (conj (pop (pop pila)) valor1) valor2))))
+(defn print-int [estado]
+  (let [pila (:pila estado)
+        valor (peek pila)]
+    (if (nil? valor)
+      estado
+      (do
+        (print (str valor " "))
+        (assoc estado :pila (pop pila))))))
+
+(defn print-ascii [estado]
+  (let [pila (:pila estado)
+        valor (peek pila)]
+    (if (nil? valor)
+      estado
+      (do
+        (print (char valor))
+        (assoc estado :pila (pop pila))))))
+
+
+
 
 (defn descartar-valor [estado] (let [pila (:pila estado)] (assoc estado :pila (pop pila))))
-(defn interpretar-dato [pila contador-programa]
-  {:+ (sumar pila)
-   :- (restar pila)
-   :* (multiplicar pila)
-   :/ (dividir pila)
-   :% (modulo pila)
-   :! (negado pila)
-   :' (mayor pila)
-   :? (random contador-programa)
-   :_ (if-horizontal pila contador-programa)
-   :| (if-vertical pila contador-programa)
-   :$ (desapilar pila)
-   :. (print-int pila)
-   :# ()
-   :g ()
-   :p ()
-   :& ()
-   })
 
-  (defn interpretar-mov [direccion contador-programa]
+(defn interpretar-dato [estado]
+  (let [toroide (:toroide estado) PC (:PC estado) dato (char (get-in toroide PC))
+        funciones  {\+ (sumar estado) \- (restar estado) \* (multiplicar estado) \/ (dividir estado) \% (modulo estado) \! (negado estado)
+                    \' (mayor estado) \? (random estado) \_ (if-horizontal estado) \| (if-vertical estado) \$ (desapilar estado) \. (print-int estado)
+                    \# ()
+                    \g ()
+                    \p ()
+                    \& ()
+                    \: ()
+                    \\ ()
+                    \" ()
+                    \^ ((fn [estado] (assoc estado :direccion "arriba")))
+                    \< ((fn [estado] (assoc estado :direccion "izquierda")))
+                    \> (fn [estado] (assoc estado :direccion "derecha"))
+                    \v (fn [estado] (assoc estado :direccion "abajo"))
+                    \. ()
+                    \, ()
+                    \@ ()
+                    \0 (fn [estado] (let [nueva-pila (conj (:pila estado) 0)] (assoc estado :pila nueva-pila)))
+                    \1 (fn [estado] (let [nueva-pila (conj (:pila estado) 1)] (assoc estado :pila nueva-pila)))
+                    \2 (fn [estado] (let [nueva-pila (conj (:pila estado) 2)] (assoc estado :pila nueva-pila)))
+                    \3 (fn [estado] (let [nueva-pila (conj (:pila estado) 3)] (assoc estado :pila nueva-pila)))
+                    \4 (fn [estado] (let [nueva-pila (conj (:pila estado) 4)] (assoc estado :pila nueva-pila)))
+                    \5 (fn [estado] (let [nueva-pila (conj (:pila estado) 5)] (assoc estado :pila nueva-pila)))
+                    \6 (fn [estado] (let [nueva-pila (conj (:pila estado) 6)] (assoc estado :pila nueva-pila)))
+                    \7 (fn [estado] (let [nueva-pila (conj (:pila estado) 7)] (assoc estado :pila nueva-pila)))
+                    \8 (fn [estado] (let [nueva-pila (conj (:pila estado) 8)] (assoc estado :pila nueva-pila)))
+                    \9 (fn [estado] (let [nueva-pila (conj (:pila estado) 9)] (assoc estado :pila nueva-pila)))
+                    }]
+    ((get funciones dato) estado) ))
+
+(defn pasar-dato-a-pila [estado]
+  (let [pila (:pila estado)
+        y (peek pila)
+        pila (pop pila)
+        x (peek pila)
+        pila (pop pila)
+        toroide (:toroide estado)
+        filas (count toroide)
+        columnas (count (first toroide))
+        x-envuelto (mod x columnas)
+        y-envuelto (mod y filas)
+        valor (int (get-in toroide [y-envuelto x-envuelto]))]
+    (assoc estado :pila (conj pila valor))))
+
+  (defn interpretar-mov [estado] (let [direccion (:direccion estado)]
   (case direccion
-    case "izquierda" (izquierda contador-programa)
-    case "derecha" (derecha contador-programa)
-    case "abajo" (abajo contador-programa)
-    case "arriba" (arriba contador-programa)))
+     "izquierda" (izquierda estado)
+     "derecha" (derecha estado)
+     "abajo" (abajo estado)
+     "arriba" (arriba estado))))
+
+(defn saltar [estado] (interpretar-mov (interpretar-mov estado)) )
 
 
-(defn recorrer-toroide [toroide pila direccion contador-programa]
+(defn recorrer-toroide [estado]
   (let [dato (get toroide contador-programa)]
     (if (= (dato) \space)
-      (recorrer-toroide toroide pila direccion (interpretar-mov direccion contador-programa))
-      ((if (=(dato) \@) nil (interpretar-dato pila contador-programa)) ) )
+      (recorrer-toroide (interpretar-mov estado))
+      ((if (=(dato) \@) nil (recorrer-toroide (interpretar-mov (interpretar-dato estado))) ) ) )
     )
   )
 
