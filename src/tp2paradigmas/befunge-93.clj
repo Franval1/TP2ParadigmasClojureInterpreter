@@ -1,15 +1,25 @@
-(def width 80)
-(def height 25)
+(def ancho 80)
+(def alto 25)
 ;; funcion para crear una grilla 80x25 con espacios
 (defn crear-toroide []
-  (vec (repeat height (vec (repeat width \space)))))
+  (vec (repeat alto (vec (repeat ancho \space)))))
 
 (defn envolver-coord [x max]
   (mod x max))
 
 ;; funcion que envuelve las coordenadas si se pasan de los limites de la grilla
 (defn envolver-coords [x y]
-  [(wrap-coord x width) (wrap-coord y height)])
+  [(envolver-coord x ancho) (envolver-coord y alto)])
+
+;; Lee el valor en una posicion especifica, usando las coordenadas del toroide
+(defn leer-celda [toroide x y]
+  (let [[x-wrap y-wrap] (envolver-coords x y)]
+    (get-in toroide [y-wrap x-wrap])))
+
+;; escribe un valor en una posición específica, usando las coordenadas del toroide
+(defn escribir-celda [toroide x y valor]
+  (let [[x-wrap y-wrap] (envolver-coords x y)]
+    (assoc-in toroide [y-wrap x-wrap] valor)))
 
 (defn cambiar-direccion [valor]
   (case valor
@@ -138,3 +148,9 @@
       ((if (=(dato) \@) nil (interpretar-dato pila contador-programa)) ) )
     )
   )
+
+;; Punto de entrada
+(defn -main [& args]
+  (let [ruta-archivo (first args)
+        toroide (cargar-programa ruta-archivo)]
+    (ejecutar-programa toroide)))
