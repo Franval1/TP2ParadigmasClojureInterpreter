@@ -239,6 +239,29 @@
     )
   )
 
+(defn crear-estado-inicial []
+  {:toroide (crear-toroide)
+   :pila []
+   :PC [0 0] ; Contador de programa inicial
+   :direccion "derecha"}) ; Dirección inicial de movimiento
+
+(defn ejecutar-programa [toroide]
+  (let [estado-inicial (assoc (crear-estado-inicial) :toroide toroide)]
+    (recorrer-toroide estado-inicial)))
+
+(defn cargar-programa [ruta-archivo]
+(let [lineas (slurp ruta-archivo)
+      toroide (crear-toroide)]
+  (reduce
+    (fn [toroide [fila linea]]
+      (reduce
+      (fn [toroide [columna caracter]]
+        (escribir-celdas toroide columna fila caracter))
+      toroide
+      (map vector (range) linea)))
+    toroide
+    (map vector (range) (clojure.string/split-lines lineas)))))
+
 ;; Punto de entrada
 (defn -main [& args]
   (let [ruta-archivo (first args)
