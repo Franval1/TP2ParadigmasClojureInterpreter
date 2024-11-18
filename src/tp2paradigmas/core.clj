@@ -242,8 +242,8 @@
 (defn crear-estado-inicial []
   {:toroide (crear-toroide)
    :pila []
-   :PC [0 0] ; Contador de programa inicial
-   :direccion "derecha"}) ; Dirección inicial de movimiento
+   :PC [0 0]
+   :direccion "derecha"}) 
 
 (defn ejecutar-programa [toroide]
   (let [estado-inicial (assoc (crear-estado-inicial) :toroide toroide)]
