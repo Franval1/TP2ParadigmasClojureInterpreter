@@ -23,7 +23,28 @@
           esperado "Hello world!"]          ;; Salida esperada
       (is (= salida esperado) "La salida no coincide con lo esperado"))))
 
-(deftest maze
+(deftest serp2
+  (testing "Ejecuta el programa y valida la salida"
+    (let [ruta "resources/serp2.bf"
+          salida (with-out-str (-main ruta)) ;; Captura la salida estándar
+          esperado "Hello world!"]          ;; Salida esperada
+      (is (= salida esperado) "La salida no coincide con lo esperado"))))
+
+(deftest palinqn
+  (testing "Ejecuta el programa y valida la salida"
+    (let [ruta "resources/palinqn.bf"
+          salida (with-out-str (-main ruta)) ;; Captura la salida estándar
+          esperado "Hello world!"]          ;; Salida esperada
+      (is (= salida esperado) "La salida no coincide con lo esperado"))))
+
+(deftest life
+  (testing "Ejecuta el programa y valida la salida"
+    (let [ruta "resources/life.bf"
+          salida (with-out-str (-main ruta)) ;; Captura la salida estándar
+          esperado "Hello world!"]          ;; Salida esperada
+      (is (= salida esperado) "La salida no coincide con lo esperado"))))
+
+(deftest prime
   (testing "Ejecuta el programa y valida la salida"
     (let [ruta "resources/prime.bf"
           salida (with-out-str (-main ruta)) ;; Captura la salida estándar
