@@ -20,7 +20,7 @@
 
 (defn escribir-celdas [toroide x y valor]
   (let [[x-wrap y-wrap] (envolver-coords x y)]
-    (assoc-in toroide [y-wrap x-wrap] valor)))
+    (assoc-in toroide [y-wrap x-wrap] valor)))              ;;cambie x por y
 
 
 
@@ -96,7 +96,7 @@
                         (assoc estado :pila nueva-pila)))
 
 ;;funciones logicas
-(defn negado [valor] (if (zero? valor) 1 0))
+(defn negado [valor] (if (zero? valor) 1 0))                ;;corregir
 
 (defn mayor [estado] (let [pila (:pila estado)
                            valor1 (peek pila)
@@ -112,10 +112,10 @@
 (defn arriba [estado] (let [contador-programa (:PC estado)] (assoc estado :PC [(first contador-programa) (- (second contador-programa) 1)])))
 (defn random [estado] (let [eleccion-random (rand-int 4)]
                         (case eleccion-random
-                          0 (derecha estado)
-                          1 (izquierda estado)
-                          2 (arriba estado)
-                          3 (abajo estado))))
+                          0 (assoc estado :direccion "derecha")
+                          1 (assoc estado :direccion "izquierda")
+                          2 (assoc estado :direccion "arriba")
+                          3 (assoc estado :direccion "abajo"))))
 
 (defn interpretar-mov [estado] (let [direccion (:direccion estado)]
                                  (case direccion
@@ -129,10 +129,10 @@
   (let [toroide (:toroide estado)
         pila (:pila estado)
         posicion (:PC estado)
-        dato (get toroide posicion)
-        nuevo-pc (:PC (interpretar-mov estado))]
+        nuevo-pc (:PC (interpretar-mov estado))
+        dato (get-in toroide [ (second nuevo-pc) (first nuevo-pc)])]
     (if (or (nil? dato) (= dato \"))
-      pila
+      (assoc estado :PC nuevo-pc)
       (modo-cadena (assoc estado :PC nuevo-pc  :pila (conj pila (int dato)) )))))
 
 
@@ -151,7 +151,7 @@
         valor (peek pila)
         nuevo-pila (pop pila)
         nuevo-estado (if (= valor 0)
-                       (assoc estado :direcccion "arriba")
+                       (assoc estado :direccion "arriba")
                        (assoc estado :direccion "abajo"))]
     (assoc nuevo-estado :pila nuevo-pila)))
 
@@ -206,18 +206,38 @@
         (print (char valor))
         (assoc estado :pila (pop pila))))))
 
-(defn saltar [estado] (interpretar-mov (interpretar-mov estado)))
+(defn saltar [estado] (interpretar-mov estado))
 
 (defn descartar-valor [estado] (let [pila (:pila estado)] (assoc estado :pila (pop pila))))
 
 ;;funciones de interpretacion y recorrido
 (defn interpretar-dato [estado]
-  (let [toroide (:toroide estado) PC (:PC estado) dato (char (get-in toroide PC))
-        funciones {\+ (sumar estado) \- (restar estado) \* (multiplicar estado) \/ (dividir estado) \% (modulo estado) \! (negado estado)
-                   \' (mayor estado) \? (random estado) \_ (if-horizontal estado) \| (if-vertical estado) \$ (desapilar estado) \. (print-int estado)
-                   \# (saltar estado) \g (pasar-dato-a-pila estado) \p (modificar-toroide estado) \~ (obtener-byte-y-apilar estado) \& (obtener-numero-y-apilar estado) \: (dup estado)
-                   \\ (intercambiar estado) \" (modo-cadena estado) \^ ((fn [estado] (assoc estado :direccion "arriba"))) \< ((fn [estado] (assoc estado :direccion "izquierda")))
-                   \> (fn [estado] (assoc estado :direccion "derecha")) \v (fn [estado] (assoc estado :direccion "abajo")) \, (print-ascii estado)
+  (let [toroide (:toroide estado) PC (:PC estado) dato (char (get-in toroide [(second PC) (first PC)]))
+        funciones {\+ (fn [estado] (sumar estado))
+                   \- (fn [estado] (restar estado))
+                   \* (fn [estado] (multiplicar estado))
+                   \/ (fn [estado] (dividir estado))
+                   \% (fn [estado] (modulo estado))
+                   \! (fn [estado] (negado estado))
+                   \' (fn [estado] (mayor estado))
+                   \? (fn [estado] (random estado))
+                   \_ (fn [estado] (if-horizontal estado))
+                   \| (fn [estado] (if-vertical estado))
+                   \$ (fn [estado] (desapilar estado))
+                   \. (fn [estado] (print-int estado))
+                   \# (fn [estado] (saltar estado))
+                   \g (fn [estado] (pasar-dato-a-pila estado))
+                   \p (fn [estado] (modificar-toroide estado))
+                   \~ (fn [estado] (obtener-byte-y-apilar estado))
+                   \& (fn [estado] (obtener-numero-y-apilar estado))
+                   \: (fn [estado] (dup estado))
+                   \\ (fn [estado] (intercambiar estado))
+                   \" (fn [estado] (modo-cadena estado))
+                   \^ (fn [estado] (assoc estado :direccion "arriba"))
+                   \< (fn [estado] (assoc estado :direccion "izquierda"))
+                   \> (fn [estado] (assoc estado :direccion "derecha"))
+                   \v (fn [estado] (assoc estado :direccion "abajo"))
+                   \, (fn [estado] (print-ascii estado))
                    \0 (fn [estado] (let [nueva-pila (conj (:pila estado) 0)] (assoc estado :pila nueva-pila)))
                    \1 (fn [estado] (let [nueva-pila (conj (:pila estado) 1)] (assoc estado :pila nueva-pila)))
                    \2 (fn [estado] (let [nueva-pila (conj (:pila estado) 2)] (assoc estado :pila nueva-pila)))
@@ -232,12 +252,11 @@
     ((get funciones dato) estado)))
 
 (defn recorrer-toroide [estado]
-  (let [toroide (:toroide estado) contador-programa (:PC estado) dato (get toroide contador-programa)]
-    (if (= (dato) \space)
-      (recorrer-toroide (interpretar-mov estado))
-      ((if (= (dato) \@) nil (recorrer-toroide (interpretar-mov (interpretar-dato estado))))))
-    )
-  )
+  (let [toroide (:toroide estado) contador-programa (:PC estado) dato (get-in  toroide [(second contador-programa) (first contador-programa)])]
+    (cond
+      (= dato \@) nil
+      (= dato \space) (recorrer-toroide (interpretar-mov estado))
+      :else (recorrer-toroide (interpretar-mov (interpretar-dato estado))))))
 
 (defn crear-estado-inicial []
   {:toroide (crear-toroide)
