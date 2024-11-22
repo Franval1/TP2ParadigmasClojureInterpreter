@@ -2,202 +2,200 @@
 
 (def ancho 80)
 (def alto 25)
-;; funcion para crear una grilla 80x25 con espacios
+
+;; Funcion para crear una grilla 80x25
 (defn crear-toroide []
   (vec (repeat alto (vec (repeat ancho \space)))))
 
+;; Envuelve una coordenada si excede los límites
 (defn envolver-coord [x max]
   (mod x max))
 
-;; funcion que envuelve las coordenadas si se pasan de los limites de la grilla
+;; Envuelve las coordenadas si se pasan de los límites de la grilla
 (defn envolver-coords [x y]
   [(envolver-coord x ancho) (envolver-coord y alto)])
 
-;; Lee el valor en una posicion especifica, usando las coordenadas del toroide
+;; Lee el valor de una posicion especifica, usando las coordenadas del toroide
 (defn leer-celda [toroide x y]
   (let [[x-wrap y-wrap] (envolver-coords x y)]
     (get-in toroide [y-wrap x-wrap])))
 
+;; Escribe un valor en una celda especifica del toroide
 (defn escribir-celdas [toroide x y valor]
   (let [[x-wrap y-wrap] (envolver-coords x y)]
-    (assoc-in toroide [y-wrap x-wrap] valor)))              ;;cambie x por y
+    (assoc-in toroide [y-wrap x-wrap] valor)))
 
-
-
-;;si la lista esta vacia devuelve 0
+;; Si la lista está vacía, devuelve 0
 (defn desapilar [estado]
-  (let [pila (:pila estado)] (if (nil? (peek pila)) (assoc estado :pila (vec '(0))) (assoc estado :pila (pop pila)) ))
-  )
+  (let [pila (:pila estado)]
+    (assoc estado :pila (if (empty? pila) (vec '(0)) (pop pila)))))
 
-;; devuelve una pila con los valores ascii de los elementos
-
-
-;; funciones de automodificacion
+;; Modifica una celda del toroide con un valor de la pila
 (defn modificar-toroide [estado]
   (let [pila (:pila estado)
         y (peek pila)
-        pila (:pila (desapilar estado))
-        x (peek pila)
-        pila-sin-x-y (:pila (desapilar (desapilar estado)) )
-        valor (peek pila-sin-x-y)
-        pila-nueva (:pila (desapilar (desapilar (desapilar estado))))
+        estado (desapilar estado)
+        x (peek (:pila estado))
+        estado (desapilar estado)
+        valor (peek (:pila estado))
+        pila-nueva (pop (:pila estado))
         toroide (:toroide estado)
-        x-envuelto (mod x alto)
-        y-envuelto (mod y ancho)
-        nuevo-toroide (assoc-in toroide [x-envuelto y-envuelto] (char valor))]
+        [x-envuelto y-envuelto] (envolver-coords x y)
+        nuevo-toroide (assoc-in toroide [y-envuelto x-envuelto] (char valor))]
     (assoc estado :pila pila-nueva :toroide nuevo-toroide)))
 
+;; Pasa el valor de una celda al tope de la pila
 (defn pasar-dato-a-pila [estado]
   (let [pila (:pila estado)
         y (peek pila)
-        pila (:pila (desapilar estado))
-        x (peek pila)
-        pila (:pila (desapilar (desapilar estado)))
+        estado (desapilar estado)
+        x (peek (:pila estado))
+        estado (desapilar estado)
         toroide (:toroide estado)
-        filas (count toroide)
-        columnas (count (first toroide))
-        x-envuelto (mod x columnas)
-        y-envuelto (mod y filas)
-        valor (int (get-in toroide [x-envuelto y-envuelto]))]
-    (assoc estado :pila (conj pila valor))))
+        [x-envuelto y-envuelto] (envolver-coords x y)
+        valor (int (get-in toroide [y-envuelto x-envuelto]))]
+    (assoc estado :pila (conj (:pila estado) valor))))
 
-;;funciones de calculo basico
-
+;; Funciones de cálculo básico
 (defn sumar [estado]
   (let [pila (:pila estado)
         valor1 (peek pila)
-        valor2 (peek (:pila (desapilar estado)) )
-        nueva-pila (conj (:pila (desapilar (desapilar estado))) (+ valor2 valor1))]
+        valor2 (peek (pop pila))
+        nueva-pila (conj (pop (pop pila)) (+ valor2 valor1))]
     (assoc estado :pila nueva-pila)))
 
-(defn restar [estado] (let [pila (:pila estado)
-                            pila-sin-valor2 (:pila (desapilar estado))
-                            valor1 (peek pila)
-                            valor2 (peek  pila-sin-valor2)
-                            nueva-pila (conj (:pila (desapilar (desapilar estado))) (- valor2 valor1))]
-                        (assoc estado :pila nueva-pila)))
+(defn restar [estado]
+  (let [pila (:pila estado)
+        valor1 (peek pila)
+        valor2 (peek (pop pila))
+        nueva-pila (conj (pop (pop pila)) (- valor2 valor1))]
+    (assoc estado :pila nueva-pila)))
 
-(defn multiplicar [estado] (let [pila (:pila estado)
-                                 valor1 (peek pila)
-                                 valor2 (peek (:pila (desapilar estado)) )
-                                 nueva-pila (conj (:pila (desapilar (desapilar estado))) (* valor2 valor1))]
-                             (assoc estado :pila nueva-pila)))
+(defn multiplicar [estado]
+  (let [pila (:pila estado)
+        valor1 (peek pila)
+        valor2 (peek (pop pila))
+        nueva-pila (conj (pop (pop pila)) (* valor2 valor1))]
+    (assoc estado :pila nueva-pila)))
 
-(defn dividir [estado] (let [pila (:pila estado)
-                             valor1 (peek pila)
-                             valor2 (peek (:pila (desapilar estado)) )
-                             nueva-pila (conj (:pila (desapilar (desapilar estado))) (quot valor2 valor1))]
-                         (assoc estado :pila nueva-pila)))
+(defn dividir [estado]
+  (let [pila (:pila estado)
+        valor1 (peek pila)
+        valor2 (peek (pop pila))
+        nueva-pila (conj (pop (pop pila)) (quot valor2 valor1))]
+    (assoc estado :pila nueva-pila)))
 
-(defn modulo [estado] (let [pila (:pila estado)
-                            valor1 (peek pila)
-                            valor2 (peek (pop pila))
-                            nueva-pila (conj (:pila (desapilar (desapilar estado))) (mod valor2 valor1))]
-                        (assoc estado :pila nueva-pila)))
+(defn modulo [estado]
+  (let [pila (:pila estado)
+        valor1 (peek pila)
+        valor2 (peek (pop pila))
+        nueva-pila (conj (pop (pop pila)) (mod valor2 valor1))]
+    (assoc estado :pila nueva-pila)))
 
-;;funciones logicas
-(defn negado [valor] (if (zero? valor) 1 0))                ;;corregir
+;; Funciones lógicas
+(defn negado [valor]
+  (if (zero? valor) 1 0))
 
-(defn mayor [estado] (let [pila (:pila estado)
-                           valor1 (peek pila)
-                           valor2 (peek (pop pila))]
-                       (if (> valor1 valor2)
-                         (assoc estado :pila (conj (desapilar (desapilar estado)) 1))
-                         (assoc estado :pila (conj (desapilar (desapilar estado)) 0)))))
+(defn mayor [estado]
+  (let [pila (:pila estado)
+        valor1 (peek pila)
+        valor2 (peek (pop pila))
+        nueva-pila (conj (pop (pop pila)) (if (> valor2 valor1) 1 0))]
+    (assoc estado :pila nueva-pila)))
 
-;;funciones de movimiento
-
+;; Funciones de movimiento
 (defn derecha [estado]
-  (let [contador-programa (:PC estado)
-        nueva-x (mod (+ (first contador-programa) 1) ancho)]
-    (assoc estado :PC [nueva-x (second contador-programa)])))
+  (let [[x y] (:PC estado)
+        nueva-x (mod (+ x 1) ancho)]
+    (assoc estado :PC [nueva-x y])))
 
 (defn izquierda [estado]
-  (let [contador-programa (:PC estado)
-        nueva-x (mod (- (first contador-programa) 1) ancho)]
-    (assoc estado :PC [nueva-x (second contador-programa)])))
+  (let [[x y] (:PC estado)
+        nueva-x (mod (- x 1) ancho)]
+    (assoc estado :PC [nueva-x y])))
 
 (defn abajo [estado]
-  (let [contador-programa (:PC estado)
-        nueva-y (mod (+ (second contador-programa) 1) alto)]
-    (assoc estado :PC [(first contador-programa) nueva-y])))
+  (let [[x y] (:PC estado)
+        nueva-y (mod (+ y 1) alto)]
+    (assoc estado :PC [x nueva-y])))
 
 (defn arriba [estado]
-  (let [contador-programa (:PC estado)
-        nueva-y (mod (- (second contador-programa) 1) alto)]
-    (assoc estado :PC [(first contador-programa) nueva-y])))
+  (let [[x y] (:PC estado)
+        nueva-y (mod (- y 1) alto)]
+    (assoc estado :PC [x nueva-y])))
 
-(defn random [estado] (let [eleccion-random (rand-int 4)]
-                        (case eleccion-random
-                          0 (assoc estado :direccion "derecha")
-                          1 (assoc estado :direccion "izquierda")
-                          2 (assoc estado :direccion "arriba")
-                          3 (assoc estado :direccion "abajo"))))
+(defn random [estado]
+  (let [eleccion-random (rand-int 4)]
+    (case eleccion-random
+      0 (assoc estado :direccion "derecha")
+      1 (assoc estado :direccion "izquierda")
+      2 (assoc estado :direccion "arriba")
+      3 (assoc estado :direccion "abajo"))))
 
-(defn interpretar-mov [estado] (let [direccion (:direccion estado)]
-                                 (case direccion
-                                   "izquierda" (izquierda estado)
-                                   "derecha" (derecha estado)
-                                   "abajo" (abajo estado)
-                                   "arriba" (arriba estado))))
+(defn interpretar-mov [estado]
+  (case (:direccion estado)
+    "izquierda" (izquierda estado)
+    "derecha" (derecha estado)
+    "abajo" (abajo estado)
+    "arriba" (arriba estado)))
+
 
 ;; modo cadena
 (defn modo-cadena [estado]
-  (let [toroide (:toroide estado)
-        pila (:pila estado)
-        posicion (:PC estado)
-        nuevo-pc (:PC (interpretar-mov estado))
-        dato (get-in toroide [ (second nuevo-pc) (first nuevo-pc)])]
-    (if (or (nil? dato) (= dato \"))
-      (assoc estado :PC nuevo-pc)
-      (modo-cadena (assoc estado :PC nuevo-pc  :pila (conj pila (int dato)) )))))
+  (loop [estado estado]
+    (let [toroide (:toroide estado)
+          pila (:pila estado)
+          posicion (:PC estado)
+          nuevo-pc (:PC (interpretar-mov estado))
+          dato (get-in toroide [(second nuevo-pc) (first nuevo-pc)])]
+      (if (or (nil? dato) (= dato \"))
+        (assoc estado :PC nuevo-pc)
+        (recur (assoc estado :PC nuevo-pc :pila (conj pila (int dato))))))))
 
 
 ;;funciones condicionales
 (defn if-horizontal [estado]
-  (let [pila (:pila estado)
-        valor (peek pila)
-        nuevo-pila (:pila  (desapilar estado))
-        nuevo-estado (if (zero? valor)
-                       (assoc estado :direccion "derecha")
-                       (assoc estado :direccion "izquierda"))]
-    (assoc nuevo-estado :pila nuevo-pila)))
+  (let [valor (peek (:pila estado))
+        nueva-direccion (if (zero? valor) "derecha" "izquierda")]
+    (-> estado
+        (assoc :direccion nueva-direccion)
+        (update :pila pop))))
 
 (defn if-vertical [estado]
-  (let [pila (:pila estado)
-        valor (peek pila)
-        nuevo-pila (pop pila)
-        nuevo-estado (if (zero? valor)
-                       (assoc estado :direccion "abajo")
-                       (assoc estado :direccion "arriba"))]
-    (assoc nuevo-estado :pila nuevo-pila)))
+  (let [valor (peek (:pila estado))
+        nueva-direccion (if (zero? valor) "abajo" "arriba")]
+    (-> estado
+        (assoc :direccion nueva-direccion)
+        (update :pila pop))))
 
 ;;funciones de entrada
 (defn leer-digitos []
-  (println "Ingresa un número seguido de un carácter no numérico:")
-  (let [entrada (->> (read-line)
-                     (take-while #(Character/isDigit (char %) ))
-                     (apply str))
-        numero (if (seq entrada) (Integer/parseInt entrada) 0)]
-    numero))
+  (try
+    (println "Ingresa un número seguido de un carácter no numérico:")
+    (let [entrada (->> (read-line)
+                       (take-while #(Character/isDigit (char %)))
+                       (apply str))
+          numero (if (seq entrada) (Integer/parseInt entrada) 0)]
+      numero)
+    (catch Exception e
+      (println "Entrada inválida. Se asignará 0 por defecto.")
+      0)))
 
 (defn obtener-numero-y-apilar [estado]
-  (let [numero (leer-digitos)
-        pila (:pila estado)]
-    (assoc estado :pila (conj pila numero))))
+  (let [numero (leer-digitos)]
+    (update estado :pila conj numero)))
 
 (defn leer-byte []
   (println "Ingresa un carácter:")
-  (let [caracter (read-line)]
-    (first caracter)))
+  (first (read-line)))
 
 (defn obtener-byte-y-apilar [estado]
-  (let [caracter (leer-byte)]
-    (println "Carácter leído:" caracter)
-    (let [byte (int caracter)]
-      (println "Valor numérico del carácter:" byte)
-      (let [pila (:pila estado)]
-        (assoc estado :pila (conj pila byte))))))
+  (let [byte (try
+               (int (leer-byte))
+               (catch Exception e
+                 (println "Error leyendo byte. Se asignará 0 por defecto.")
+                 0))]
+    (update estado :pila conj byte)))
 
 (defn dup [estado] (let [pila (:pila estado)] (assoc estado :pila (conj pila (peek pila)))))
 
@@ -226,7 +224,7 @@
       estado
       (do
         (print (str valor " "))
-        (assoc estado :pila (pop pila))))))
+        (update estado :pila pop)))))
 
 (defn print-ascii [estado]
   (let [pila (:pila estado)
@@ -235,7 +233,7 @@
       estado
       (do
         (print (char valor))
-        (assoc estado :pila (pop pila))))))
+        (update estado :pila pop)))))
 
 (defn saltar [estado] (interpretar-mov estado))
 
@@ -285,11 +283,14 @@
 
 
 (defn recorrer-toroide [estado]
-  (let [toroide (:toroide estado) contador-programa (:PC estado) dato (get-in  toroide [(second contador-programa) (first contador-programa)])]
-    (cond
-      (= dato \@) nil
-      (= dato \space) (recorrer-toroide (interpretar-mov estado))
-      :else (recorrer-toroide (interpretar-mov (interpretar-dato estado))))))
+  (loop [estado estado]
+    (let [toroide (:toroide estado)
+          contador-programa (:PC estado)
+          dato (get-in toroide [(second contador-programa) (first contador-programa)])]
+      (cond
+        (= dato \@) nil
+        (= dato \space) (recur (interpretar-mov estado))
+        :else (recur (interpretar-mov (interpretar-dato estado)))))))
 
 (defn crear-estado-inicial []
   {:toroide (crear-toroide)
