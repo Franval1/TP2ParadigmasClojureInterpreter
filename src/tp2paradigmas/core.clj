@@ -93,8 +93,11 @@
     (assoc estado :pila nueva-pila)))
 
 ;; Funciones lógicas
-(defn negado [valor]
-  (if (zero? valor) 1 0))
+(defn negado [estado]
+  (if (zero? (peek (:pila estado)))
+    (assoc estado :pila (conj (:pila (desapilar estado)) 1))
+    (assoc estado :pila (conj (:pila (desapilar estado)) 0))))
+
 
 (defn mayor [estado]
   (let [pila (:pila estado)
@@ -155,11 +158,13 @@
 
 ;;funciones condicionales
 (defn if-horizontal [estado]
-  (let [valor (peek (:pila estado))
+  (let [pila (:pila estado)
+        valor (if (empty? pila) 0 (peek pila))
         nueva-direccion (if (zero? valor) "derecha" "izquierda")]
     (-> estado
         (assoc :direccion nueva-direccion)
         (update :pila pop))))
+
 
 (defn if-vertical [estado]
   (let [valor (peek (:pila estado))
@@ -294,7 +299,7 @@
 
 (defn crear-estado-inicial []
   {:toroide (crear-toroide)
-   :pila []
+   :pila [0]
    :PC [0 0]
    :direccion "derecha"})
 
